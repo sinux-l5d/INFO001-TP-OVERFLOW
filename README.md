@@ -55,7 +55,7 @@ void put_wisdom(void) {
 }
 ```
 
-## Question 3: NOT SURE
+## Question 3
 
 Une autre variable est sujette à une attaque buffer overflow et qui ne se trouve pas dans la *stack* est le tableau `ptrs` qui est une variable global.
 
@@ -63,7 +63,15 @@ Une autre variable est sujette à une attaque buffer overflow et qui ne se trouv
 fptr  ptrs[3] = { NULL, get_wisdom, put_wisdom };
 ```
 
-## Question 4: TODO
+## Question 4
+
+```
+fptr tmp = ptrs[s]; // on peut overflow
+tmp();
+```
+
+Si on calcul le bon offset `s`, on peut aller exécuter une autre fonction que `put_wisdom` ou `get_wisdom`.
+Par exemple, on peut mettre l'adresse de `write_secret` dans `buf` et calculer l'offset pour que `s` pointe sur cette adresse, ce qui va exécuter `write_secret` quand on arrive à `tmp()`.
 
 ## Question 5
 
